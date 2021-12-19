@@ -1,7 +1,6 @@
 import os
 import sys
 import datetime
-from termcolor import colored, cprint # Impor termcolor modules
 import app.models as models # Impor models file
 import app.home as home # Impor home file
 
