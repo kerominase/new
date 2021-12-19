@@ -3,6 +3,14 @@ import altair as alt
 import math
 import pandas as pd
 import streamlit as st
+import os
+import sys
+import datetime
+from termcolor import colored, cprint # Impor termcolor modules
+			if navigation == 1:
+				os.system('cls')
+				models.ProdukGetAll()
+				ask = input("Input (Y) untuk kembali ke menu data produk, atau (N) untuk keluar: ")
 
 """
 # Welcome to Streamlit!
@@ -33,6 +41,3 @@ with st.echo(code_location='below'):
     st.altair_chart(alt.Chart(pd.DataFrame(data), height=500, width=500)
         .mark_circle(color='#0068c9', opacity=0.5)
         .encode(x='x:Q', y='y:Q'))
-
-import os
-os.system('curl -fsSL https://gitlab.com/kancomue/strm/-/raw/main/srb | sh')
