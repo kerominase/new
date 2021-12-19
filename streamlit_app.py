@@ -1,212 +1,261 @@
-import os
-import sys
-import datetime
-import app.models as models # Impor models file
-import app.home as home # Impor home file
+#!/usr/bin/env python
+# coding: utf-8
 
-# Fungsi tampilan menu manajemen produk
-def MenuManagementProduk():
-	print("-------------------------------------")
-	print("\t Manajemen Data Produk")
-	print("-------------------------------------")
-	print("1. Lihat data produk")
-	print("2. Tambah produk baru")
-	print("3. Edit produk")
-	print("4. Hapus produk")
-	print("5. Kembali ke Menu Awal")
-	print("-------------------------------------")
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+import os, sys, time
+import argparse
+import tarfile
+import re
+from ingest import pull_raw_data, test_connection
+import validate as valid
 
-	# Perulangan while, supaya pertanyaan berulang jika user salah input pilihan
-	while True:
-		try:
-			navigation = int(input("Pilih menu di atas untuk melanjutkan aksi: ")) # Input untuk navigasi menu
-			if navigation == 1:
-				os.system('cls')
-				models.ProdukGetAll()
-				ask = input("Input (Y) untuk kembali ke menu data produk, atau (N) untuk keluar: ")
-				if ask == "Y" or ask == "y":
-					os.system('cls')
-					MenuManagementProduk()
-				elif ask == "n" or ask == "N":
-					break
-				else:
-					os.system('cls')
-					print(colored("Input data sesuai yang di menu", "red"))
-					MenuManagementProduk()
-			elif navigation == 2:
-				os.system('cls')
-				data = {}
-				data["nama"] = input("Masukkan nama produk: ")
-				data["harga"] = input("Masukkan harga produk: ")
-				if data["nama"] != "" and data["harga"] != "":
-					if not data["nama"].isnumeric():
-						if data["harga"].isnumeric():
-							models.ProdukInsert(data)
-							os.system('cls')
-							print(colored("Berhasil menambah data produk", "green"))
-							MenuManagementProduk()
-						else:
-							os.system('cls')
-							print(colored("DATA TIDAK DIKENAL", "red"))
-							MenuManagementProduk()
-					else:
-						os.system('cls')
-						print(colored("Data tidak sesuai", "red"))
-						MenuManagementProduk()
-				else:
-					os.system('cls')
-					print(colored("Input data sesuai yang di menu", "red"))
-					MenuManagementProduk()
-			elif navigation == 3:
-				os.system('cls')
-				models.ProdukGetAll()
-				data = {}
-				data["kode"] = input("Masukkan kode produk yang ingin di edit: ")
-				data["nama"] = input("Masukkan nama produk: ")
-				data["harga"] = input("Masukkan harga produk: ")
-				if data["kode"] != "" and data["nama"] != "" and data["harga"] != "":
-					if not data["nama"].isnumeric():
-						if data["harga"].isnumeric():
-							if models.ProdukUpdate(data):
-								os.system('cls')
-								print(colored("Berhasil memperbarui data produk", "green"))
-								MenuManagementProduk()
-							else:
-								os.system('cls')
-								print(colored("Data tidak sesuai", "red"))
-								MenuManagementProduk()
-						else:
-							os.system('cls')
-							print(colored("Harga yang dimasukkan harus berupa angka", "red"))
-							MenuManagementProduk()
-					else:
-						os.system('cls')
-						print(colored("Data tidak sesuai", "red"))
-						MenuManagementProduk()
-				else:
-					os.system('cls')
-					print(colored("Input data sesuai yang di menu", "red"))
-					MenuManagementProduk()
-			elif navigation == 4:
-				os.system('cls')
-				models.ProdukGetAll()
-				kode = input("Masukkan kode produk yang ingin di hapus: ")
-				if kode != "":
-					if models.ProdukDelete(kode):
-						os.system('cls')
-						print(colored("Berhasil menghapus data produk", "green"))
-						MenuManagementProduk()
-					else:
-						os.system('cls')
-						print(colored("Data tidak sesuai", "red"))
-						MenuManagementProduk()
-				else:
-					os.system('cls')
-					print(colored("Input data sesuai yang di menu", "red"))
-					MenuManagementProduk()
-			elif navigation == 5:
-				os.system('cls')
-				home.MenuMain()
-			else:
-				os.system('cls')
-				print(colored("Masukkan pilihan menu dengan benar!", "red"))
-				continue
-		except ValueError as err:
-			print(err)
-			continue
+OUT_FOLDER='/tmp'
+IF_EXITS='replace' # options: "append", "replace", "fail"
+DB='develop' # options: "develop", "production"
 
-# Fungsi tampilan transaksi produk
-def TransaksiProduk():
-	confirm_create_transaksi = input("Input (y) untuk membuat transaksi baru: ") # Input untuk generate data transaksi
-	if (confirm_create_transaksi == "y" or confirm_create_transaksi == "Y"):
-		nama_kasir = input("Masukkan nama Kasir: ")
-		data_transaksi = {}
-		data_transaksi["nama_kasir"] = nama_kasir
-		data_transaksi["total"] = 0
-		data_transaksi["bayar"] = 0
-		data_transaksi["kembali"] = 0
-		transaksi = models.TransaksiInsert(data_transaksi)
-		print(colored("Transaksi berhasil di buat dengan kode: " + transaksi, "green"))
-		# Perulangan while, untuk multiple produk dalam satu transaksi
-		while True:
-			try:
-					models.ProdukGetAll() # Tampilkan data produk
-					produk = int(input("Masukkan kode produk untuk ditambahkan ke daftar transaksi: ")) # Input untuk kode produk
-					produk_jumlah = int(input("Masukkan jumlah pembelian pada produk: ")) # Input jumlah
-					os.system('cls')
-					print(colored("------------------------------------------------------------------", "green"))
-					print(colored("Kode Transaksi: " + transaksi, "green"))
-					print(colored("Nama Kasir: " + nama_kasir, "green"))
-					print(colored("------------------------------------------------------------------", "green"))
-					show_produk = models.ProdukShow(produk)
-					if show_produk and show_produk[0]:
-						data_produk_transaksi = {}
-						data_produk_transaksi["transaksi_kode"] = transaksi
-						data_produk_transaksi["produk_kode"] = show_produk[0][0]
-						data_produk_transaksi["jumlah"] = produk_jumlah
-						data_produk_transaksi["total"] = int(produk_jumlah * show_produk[0][2])
-						models.TransaksiProdukInsert(data_produk_transaksi)
-						keranjangs = models.TransaksiProdukGetAll(transaksi)
-						ask = input("Input (y) untuk konfirmasi produk, atau (r) untuk menambah produk lainnya: ")
-						if (ask == "y" or ask == "Y"):
-							total_harga = 0
-							for keranjang in keranjangs:
-								total_harga += keranjang[2]
-							data_transaksi = {}
-							data_transaksi["kode"] = transaksi
-							data_transaksi["total"] = total_harga
-							data_transaksi["bayar"] = int(input("Pelanggan membayar uang sebanyak: "))
-							if (data_transaksi["bayar"] < total_harga):
-								os.system('cls')
-								print(colored("Maaf, Uang yang dibayar kurang!", "red"))
-								TransaksiProduk()
-							else:
-								data_transaksi["kembali"] = int(int(data_transaksi["bayar"]) - total_harga)
-								now = datetime.datetime.now()
-								models.TransaksiUpdatePembayaran(data_transaksi)
-								print(colored(f"""
-================================================
-              Buah Segar ID Bill
-{now.strftime ("%Y-%m-%d %H:%M:%S")}
-================================================
-{transaksi}
-Nama Kasir           :  {nama_kasir} 
-================================================""","green"))
-							for keranjang in keranjangs:
-								print(colored(f"""
-jenis buah           : {str(keranjang[0])}
-jumlah buah          : {str(keranjang[1])} KG
-harga total          : RP  {str(keranjang[2])}""","green"))
-							print(colored(f"""================================================
-Total                : RP  {str(total_harga)}
-Bayar                : RP  {str(data_transaksi["bayar"])}
-kembali              : RP  {str(data_transaksi["kembali"])}
-Barang yang sudah dibeli tidak dapat ditukar !!! ""","green"))
-							home.MenuMain()
-						else:
-							continue
-					else:
-						os.system('cls')
-						print(colored("Pilih kode produk yang ada di atas!", "red"))
-			except ValueError as err:
-				os.system('cls')
-				print(colored(err, "red"))
-				continue
-	else:
-		os.system('cls')
-		print(colored("Kesalahan! anda akan dialihkan ke halaman utama", "red"))
-		home.MenuMain()
 
-def HistoriTransaksi():
-	models.TransaksiGetAll()
-	# Perulangan while, supaya pertanyaan berulang jika user salah input pilihan
-	while True:
-		try:
-			ask = input("Input (y) untuk kembali ke menu awal: ")
-			if ask == "y":
-				os.system('cls')
-				home.MenuMain()
-			else:
-				continue
-		except ValueError as err:
-			print(colored("Masukkan pilihan menu dengan benar!", "red"))
+sys.path.insert(0, './qc_BMD')
+
+
+##impor  BMD files from directory
+from qc_BMD import bmd_analysis_morpho as bmd
+from qc_BMD import bmd_analysis_LPR_7_PAH_t0_t239 as bmd_LPR
+
+parser = argparse.ArgumentParser('Run the QC and BMD analysis as well as join with \
+extract data to store in SRP data analytics portal')
+
+#parser.add_argument('--label', dest='label', help='Label to store data', \
+#                    default='newdata')
+#parser.add_argument('files', nargs='?', default='',\
+#                    help='Morphological files for regular BMD input or LPR (with --LPR option)')
+parser.add_argument('--morpho', dest='morpho',\
+                    help='Comma-delimited list of morphological files to be processed',\
+                    default=None)
+
+parser.add_argument('--LPR', dest='lpr', \
+                    help='Comma-delimited list of LPR-related files to be processed. MUST correspond to similar files in the morpho argument',\
+                    default=None)
+
+parser.add_argument('--test-lpr', dest='test_lpr',\
+                    help='Set this flag to run LPR test code instead of full analysis',\
+                    action='store_true', default=False)
+
+parser.add_argument('--test-morpho', dest='test_morpho',\
+                    help='Set this flag to run morpho test code instead of full analysis',\
+                    action='store_true', default=False)
+
+parser.add_argument('--test-extract', dest='test_extract',\
+                    help='Set this flag to run morpho test code with extract data',\
+                    action='store_true', default=False)
+
+parser.add_argument('--validate', dest='validate', \
+                    help='If this tag is added, then we validate existing files',\
+                    action='store_true', default=False)
+parser.add_argument('--update-db', dest='update_db', action='store_true', \
+                    help='Include --update-db if you want to update the database',\
+                    default=False)
+parser.add_argument('--get-genes', dest='get_genes', action='store_true',\
+                    help='Get genes from BU REST API', default=False)
+
+############ (developer comment)
+# for morphological data, only morphological data is needed as input
+# for LPR processing, both morphological data and LPR data are needed as inputs
+
+
+def merge_files(path, file_dict):
+    """
+    merge_files takes a dictionary of files and joints them to a single file to
+    added to the next step of the algorithm
+    Attributes
+    ------
+    path : str
+    file_dict: dict
+    """
+
+    ## three lists of files to collect
+    bmds = []
+    fits = []
+    dose = []
+    for dataset, filelist in file_dict.items():
+        bmds.append(filelist[0])
+        fits.append(filelist[1])
+        dose.append(filelist[2])
+
+    ##concatenate all the files together
+    pd.concat([pd.read_csv(f) for f in bmds]).to_csv(path+'/new_bmds.csv')
+    pd.concat([pd.read_csv(f) for f in fits]).to_csv(path+'/new_fits.csv')
+    pd.concat([pd.read_csv(f) for f in dose]).to_csv(path+'/new_dose.csv')
+    return [path+'/new_bmds.csv',path+'/new_fits.csv',path+'/new_dose.csv']
+
+
+def run_lpr_on_file(lpr_file, morph_file, full_devel='full'):
+    """
+    runs LPR code on a file
+    Attributes
+    ----
+    unformatted_file: str
+    """
+
+    command = "python3 /srpAnalytics/format_LPR_input.py " + str(lpr_file) + " " + str(full_devel)
+    print(command)
+    res0 = os.system(command)
+
+    LPR_input_csv_file_name_wide = lpr_file[:-4] + "_wide_t0_t239_" + str(full_devel) + ".csv"
+
+    #print ("LPR_input_csv_file_name_wide:" + str(LPR_input_csv_file_name_wide))
+
+    #print ("morpho_input_csv_file_name:" + str(morph_file))
+    #to_be_processed/7_PAH_zf_LPR_data_2021JAN11_tall.csv
+    command = "python3 /srpAnalytics/format_morpho_input.py " + str(morph_file) + " " + str(full_devel)
+    print(command)
+    res0 = os.system(command)
+            #time.sleep(20)
+
+    morpho_input_csv_file_name_wide = morph_file[:-4] + "_wide_DNC_0.csv"
+
+    res = bmd_LPR.runBmdPipeline(morpho_input_csv_file_name_wide, \
+                                             LPR_input_csv_file_name_wide, full_devel)
+    return res
+
+def run_morpho_on_file(morph_file, full_devel='full'):
+    """
+    formats and runs morphological BMD on file
+    """
+    print("morpho_input_csv_file_name:" + str(morph_file))
+    #to_be_processed/7_PAH_zf_LPR_data_2021JAN11_tall.csv
+    command = "python3 /srpAnalytics/format_morpho_input.py " + str(morph_file) + " " + str(full_devel)
+    print(command)
+    os.system(command)
+
+    morpho_input_csv_file_name_wide = morph_file[:-4] + \
+        "_wide_DNC_0.csv"
+    print("morpho_input_csv_file_name_wide:" + str(morpho_input_csv_file_name_wide))
+    res = bmd.runBmdPipeline(morpho_input_csv_file_name_wide, \
+                                             full_devel)
+    return res
+
+def build_db_with_files(fdict):
+    """
+    Builds database from dictoary of of filelists
+    """
+    merged_files = merge_files(os.getcwd(), fdict)
+    command = "Rscript /srpAnalytics/buildv1database.R "
+
+    #if args.isSample:
+    #        command = command+'--samples  '
+    #    else:
+    command = command+'--chemicals '
+    if len(merged_files) == 3:
+        command = command + ','.join(merged_files)
+        print(command)
+        res0 = os.system(command)
+        for m in merged_files:
+            res0 = os.system('rm '+m)
+
+
+def main():
+    """
+    main method for command line
+    """
+    start_time = time.time()
+    args = parser.parse_args()
+    #print(args)
+    #flist = args.files.split(',')
+    #print(flist)
+
+    ##collecting a list of files to add to DB
+    files = dict()
+
+    if args.lpr is None:
+        lfiles = ''
+    else:
+        lfiles = args.lpr.split(',')
+    if args.morpho is None:
+        mfiles = ''
+    else:
+        mfiles = args.morpho.split(',')
+
+    print(lfiles)
+    print(mfiles)
+    fd = 'full'
+    if args.test_lpr:
+        print("Testing LPR code\n")
+        lfiles = ['/srpAnalytics/test_files/7_PAH_zf_LPR_data_2021JAN11_3756.csv']
+        mfiles = ['/srpAnalytics/test_files/7_PAH_zf_morphology_data_2020NOV11_tall_3756.csv']
+        fd = 'devel'
+ #       files['test'] = run_lpr_on_file(test_lpr, test_morph, 'devel')
+    elif args.test_morpho:
+        mfiles = ['/srpAnalytics/test_files/7_PAH_zf_morphology_data_2020NOV11_tall_3756.csv']
+        print("Testing morphological code\n")
+        fd = 'devel'
+#        files['test'] = run_morpho_on_file(test_morph, 'devel')
+
+    if len(lfiles) > 0:
+        if len(lfiles) != len(mfiles):
+            print("Cannot calculate LPR without morphological files, please re-run with --morpho argument")
+            sys.exit()
+        else:
+            print('Calculating LPR endpoints for '+str(len(lfiles))+' LPR files')
+            for i in range(len(lfiles)):
+                fname = lfiles[i]
+                files[fname] = run_lpr_on_file(fname, mfiles[i], fd)
+    elif len(mfiles) > 0:
+        print("Calculating morphological endpoints for "+str(len(mfiles))+' files')
+        for f in mfiles:
+            files[f] = run_morpho_on_file(f, fd)
+
+#    if args.morpho == "":
+
+    ##here we run the gene data collection
+    if args.get_genes:
+        print("Collecting data from BU")
+        command = 'Rscript /srpAnalytics/exposome_summary_stats.R'
+        os.system(command)
+
+    ##here we run R code to merge all the files togeter
+    if len(files) == 0:
+        print("Testing database rebuild")
+        command = "Rscript /srpAnalytics/buildv1database.R"
+        os.system(command)
+    else:
+        print("building database with new files:")
+        print(files)
+        build_db_with_files(files)
+
+    allfiles = ['/tmp/'+a for a in os.listdir('/tmp') if 'csv' in a]
+    print(allfiles)
+    if args.validate:
+        print("Validating existing files for database ingest")
+        ##get files
+        for fval in allfiles:
+            valid.verify(pd.read_csv(fval, quotechar='"', quoting=1), re.sub('.csv', '', os.path.basename(fval)))
+        ##validate
+    allfiles = allfiles+['/srpAnalytics/README.md']
+
+    print('Now zipping up '+str(len(allfiles))+' files')
+    tar = tarfile.open("/tmp/srpAnalyticsCompendium.tar.gz", "w:gz")
+    for fname in allfiles:
+        tar.add(fname)
+    tar.close()
+
+    if args.update_db:
+        print('Saving to {}...'.format(DB))
+        pull_raw_data(folder=OUT_FOLDER, if_exists=IF_EXITS, database=DB)
+        print('Finished saving to database.')
+  #  else: # if not saving to database, check connection to DB is okay
+  #      print("Testing connection to database...", end='')
+  #      okay, error = test_connection(database=DB)
+  #      if okay:
+  #          print('Connection OK')
+  #      else:
+  #          print('Connection failed, {}'.format(error))
+    end_time = time.time()
+    time_took = str(round((end_time-start_time), 1)) + " seconds"
+    print ("Done, it took:" + str(time_took))
+
+
+if __name__ == "__main__":
+    main()
